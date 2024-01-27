@@ -1,87 +1,90 @@
-import random
+import heapq
 
-class WumpusWorld:
-    def __init__(self, size=4, num_pits=3):
-        self.size = size
-        self.agent_location = (0, 0)
-        self.gold_location = (random.randint(0, size-1), random.randint(0, size-1))
-        self.pit_locations = set()
-        self.wumpus_location = (random.randint(0, size-1), random.randint(0, size-1))
-        self.arrows = 1
-        self.game_over = False
+# Define the Wumpus World grid
+grid = [[0, 0, 0, 0],
+        [0, 1, 1, 0],
+        [0, 1, 0, 0],
+        [0, 0, 0, 0]]
 
-        # Randomly place pits
-        while len(self.pit_locations) < num_pits:
-            row, col = random.randint(0, size-1), random.randint(0, size-1)
-            if (row, col) != self.gold_location and (row, col) != self.wumpus_location:
-                self.pit_locations.add((row, col))
+# Define the initial state of the agent
+start = (0, 0)
 
-    def print_percept(self):
-        row, col = self.agent_location
-        percept = "You are in room ({},{}).".format(row, col)
-        if self.agent_location == self.gold_location:
-            percept += " You see a glitter."
-        if self.agent_location == self.wumpus_location:
-            percept += " You smell a terrible stench."
-        if self.agent_location in self.pit_locations:
-            percept += " You feel a breeze."
-        if self.arrows > 0:
-            percept += " You have {} arrow(s) left.".format(self.arrows)
-        print(percept)
+# Define the goal state of the agent
+goal = (3, 3)
 
-    def shoot(self):
-        if self.arrows > 0:
-            self.arrows -= 1
-            if self.agent_location == self.wumpus_location:
-                self.game_over = True
-                print("You killed the Wumpus! You win!")
+# Define the possible actions of the agent
+actions = ["up", "down", "left", "right"]
+
+# Define the heuristic function
+
+
+def heuristic(current, goal):
+    return abs(current[0] - goal[0]) + abs(current[1] - goal[1])
+
+# Define the A* algorithm
+
+
+def a_star(grid, start, goal, actions):
+    # Create a priority queue for storing the states to be explored
+    heap = []
+    heapq.heappush(heap, (0, start))
+    # Create a dictionary for storing the cost of reaching each state
+    cost = {start: 0}
+    # Create a dictionary for storing the came from information for each state
+    came_from = {start: None}
+    # While the priority queue is not empty
+    while heap:
+        # Get the state with the lowest cost
+        current = heapq.heappop(heap)[1]
+        # If the current state is the goal state, return the came from information
+        if current == goal:
+            return came_from
+        # For each possible action
+        for action in actions:
+            # Compute the next state
+            if action == "up":
+                next_state = (current[0] - 1, current[1])
+            elif action == "down":
+                next_state = (current[0] + 1, current[1])
+            elif action == "left":
+                next_state = (current[0], current[1] - 1)
+            elif action == "right":
+                next_state = (current[0], current[1] + 1)
+            # If the next state is outside of the grid, skip it
+            if next_state[0] < 0 or next_state[0] >= len(grid) or next_state[1] < 0 or next_state[1] >= len(grid[0]):
+                continue
+            # If the next state is a wall, skip it
+            if grid[next_state[0]][next_state[1]] == 1:
+                continue
+            # Compute the cost of reaching the next state
+            new_cost = cost[current] + 1
+            # If the next state has not been visited yet or if the new cost is lower than the previous cost
+            if next_state not in cost or new_cost < cost[next_state]:
+                # Update the cost of reaching the next state
+                cost[next_state] = new_cost
+                # Update the came from information for the next state
+                came_from[next_state] = current
+                # Add the next state to the priority queue
+                heapq.heappush(
+                    heap, (new_cost + heuristic(next_state, goal), next_state))
+
+    # If the # If the loop completes without finding a path, return None
+                return None
+            path = a_star(grid, start, goal, actions)
+            if path is not None:
+
+                    # Create an empty list for storing the path
+                    path_list = [goal]
+                    # Get the current state
+                    current = goal
+                    # While the current state is not the start state
+            while current != start:
+                    # Get the previous state
+                    current = path[current]
+                    # Add the previous state to the path list
+                    path_list.append(current)
+                    # Print the path in reverse order
+                    print(path_list[::-1])
             else:
-                print("You missed the Wumpus.")
-        else:
-            print("You have no arrows left.")
-
-    def move(self, direction):
-        row, col = self.agent_location
-        if direction == "UP" and row > 0:
-            self.agent_location = (row - 1, col)
-        elif direction == "DOWN" and row < self.size - 1:
-            self.agent_location = (row + 1, col)
-        elif direction == "LEFT" and col > 0:
-            self.agent_location = (row, col - 1)
-        elif direction == "RIGHT" and col < self.size - 1:
-            self.agent_location = (row, col + 1)
-
-    def action(self, action):
-        if action == "MOVE":
-            direction = input("Enter direction (UP, DOWN, LEFT, RIGHT): ").upper()
-            self.move(direction)
-        elif action == "SHOOT":
-            self.shoot()
-        elif action == "GRAB" and self.agent_location == self.gold_location:
-            print("You grabbed the gold!")
-            self.gold_location = None
-        elif action == "CLIMB" and self.agent_location == (0, 0):
-            if self.gold_location is None:
-                print("You climbed out of the cave without gold. You win!")
-            else:
-                print("You climbed out of the cave with the gold. You win!")
-            self.game_over = True
-
-    def play(self):
-        print("Welcome to the Wumpus World!")
-        while not self.game_over:
-            self.print_percept()
-            action = input("Enter action (MOVE, SHOOT, GRAB, CLIMB, QUIT): ").upper()
-
-            if action == "QUIT":
-                print("You quit the game.")
-                break
-            elif action in ["MOVE", "SHOOT", "GRAB", "CLIMB"]:
-                self.action(action)
-            else:
-                print("Invalid action. Please try again.")
-
-if __name__ == "__main__":
-    size = 4  
-    wumpus_world = WumpusWorld(size)
-    wumpus_world.play()
+                    print("No path found")
+        
